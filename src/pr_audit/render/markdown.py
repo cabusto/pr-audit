@@ -32,30 +32,52 @@ def _render_scope(audit: Audit) -> list[str]:
     return lines
 
 
-def _group_dependency_changes(changes: list[DependencyChange]) -> list[str]:
+def _dependency_notes(audit: Audit) -> list[str]:
+    notes = sorted(
+        (
+            error
+            for error in audit.errors
+            if error.area == "dependencies" and error.message
+        ),
+        key=lambda error: (error.path or "", error.message),
+    )
+    return [f"- {error.path or 'dependency manifest'}: {error.message}" for error in notes]
+
+
+def _group_dependency_changes(audit: Audit) -> list[str]:
+    changes = audit.dependencies
+    notes = _dependency_notes(audit)
     added = sorted((change for change in changes if change.status == "added"), key=lambda change: change.name)
     removed = sorted((change for change in changes if change.status == "removed"), key=lambda change: change.name)
     changed = sorted((change for change in changes if change.status == "changed"), key=lambda change: change.name)
     lines = ["## Dependencies"]
     if not changes:
-        lines.append("No changes")
-        return lines
-    if added:
-        lines.append("Added")
-        for change in added:
-            lines.append(f"+ {change.name}")
-    if removed:
-        lines.append("")
-        lines.append("Removed")
-        for change in removed:
-            lines.append(f"- {change.name}")
-    if changed:
-        lines.append("")
-        lines.append("Updated")
-        for change in changed:
-            before = change.before or "?"
-            after = change.after or "?"
-            lines.append(f"{change.name} {before} -> {after}")
+        if notes:
+            lines.append("Dependency manifest changes detected, but no dependency-level changes could be parsed")
+        else:
+            lines.append("No dependency manifest changes detected")
+    else:
+        if added:
+            lines.append("Added")
+            for change in added:
+                lines.append(f"+ {change.name}")
+        if removed:
+            lines.append("")
+            lines.append("Removed")
+            for change in removed:
+                lines.append(f"- {change.name}")
+        if changed:
+            lines.append("")
+            lines.append("Updated")
+            for change in changed:
+                before = change.before or "?"
+                after = change.after or "?"
+                lines.append(f"{change.name} {before} -> {after}")
+    if notes:
+        if changes:
+            lines.append("")
+            lines.append("Notes")
+        lines.extend(notes)
     return lines
 
 
@@ -143,7 +165,7 @@ def render_markdown(audit: Audit) -> str:
         "",
         *_render_scope(audit),
         "",
-        *_group_dependency_changes(audit.dependencies),
+        *_group_dependency_changes(audit),
         "",
         *_render_tests(audit),
         "",

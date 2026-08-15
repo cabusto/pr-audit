@@ -3,12 +3,16 @@ from __future__ import annotations
 import re
 import tomllib
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Any
 
 from ..models import AnalyzerError, DependencyChange
 
 
 _DEV_GROUP_NAMES = {"dev", "test", "tests", "lint", "type", "typing", "ci", "docs"}
+_DEV_MARKERS = {"dev", "test", "tests", "lint", "type", "typing", "ci", "docs"}
+_LOCK_MANIFEST_NAMES = {"poetry.lock", "pipfile", "pipfile.lock", "uv.lock"}
+_REQUIREMENTS_SUFFIXES = (".txt", ".in", ".lock")
 _REQ_NAME_RE = re.compile(r"^(?P<name>[A-Za-z0-9][A-Za-z0-9_.-]*)(?P<extras>\[[^\]]+\])?(?P<rest>.*)$")
 
 
@@ -26,6 +30,33 @@ def _normalize_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+def _path_tokens(path: str) -> set[str]:
+    tokens: set[str] = set()
+    for part in PurePosixPath(path.lower()).parts:
+        tokens.update(token for token in re.split(r"[^a-z0-9]+", part) if token)
+    return tokens
+
+
+def is_dependency_manifest(path: str) -> bool:
+    lowered = PurePosixPath(path.lower())
+    name = lowered.name
+    if name == "pyproject.toml":
+        return True
+    if name in _LOCK_MANIFEST_NAMES:
+        return True
+    if (name.startswith("requirements") or "requirements" in lowered.parts) and name.endswith(_REQUIREMENTS_SUFFIXES):
+        return True
+    return False
+
+
+def _supports_dependency_parsing(path: str) -> bool:
+    lowered = PurePosixPath(path.lower())
+    name = lowered.name
+    if name == "pyproject.toml":
+        return True
+    return (name.startswith("requirements") or "requirements" in lowered.parts) and name.endswith(_REQUIREMENTS_SUFFIXES)
+
+
 def _normalize_extras(extras: str | None) -> str:
     if not extras:
         return ""
@@ -36,6 +67,8 @@ def _normalize_extras(extras: str | None) -> str:
 def _parse_requirement_line(line: str, *, manifest: str, section: str, dependency_type: str) -> _DependencyRecord | None:
     stripped = re.sub(r"\s+#.*$", "", line).strip()
     if not stripped or stripped.startswith("#"):
+        return None
+    if stripped.startswith("-"):
         return None
     match = _REQ_NAME_RE.match(stripped)
     if not match:
@@ -100,6 +133,12 @@ def _poetry_group_type(group: str) -> str:
     return "development" if group in _DEV_GROUP_NAMES or group.startswith("dev") else "unknown"
 
 
+def _requirements_dependency_type(manifest: str) -> str:
+    if _path_tokens(manifest) & _DEV_MARKERS:
+        return "development"
+    return "runtime"
+
+
 def _parse_pyproject(text: str, *, manifest: str) -> dict[str, _DependencyRecord]:
     data = tomllib.loads(text)
     records: dict[str, _DependencyRecord] = {}
@@ -161,20 +200,25 @@ def _parse_pyproject(text: str, *, manifest: str) -> dict[str, _DependencyRecord
 def _parse_requirements(text: str, *, manifest: str) -> dict[str, _DependencyRecord]:
     records: dict[str, _DependencyRecord] = {}
     for line in text.splitlines():
-        record = _parse_requirement_line(line, manifest=manifest, section="requirements.txt", dependency_type="runtime")
+        record = _parse_requirement_line(
+            line,
+            manifest=manifest,
+            section=PurePosixPath(manifest).name,
+            dependency_type=_requirements_dependency_type(manifest),
+        )
         if record:
             records[record.key] = record
     return records
 
 
-def _records_from_text(text: str | None, *, manifest: str) -> dict[str, _DependencyRecord]:
+def _records_from_text(text: str | None, *, manifest: str) -> dict[str, _DependencyRecord] | None:
     if text is None:
         return {}
     if manifest == "pyproject.toml":
         return _parse_pyproject(text, manifest=manifest)
-    if manifest.startswith("requirements") and manifest.endswith(".txt"):
+    if _supports_dependency_parsing(manifest):
         return _parse_requirements(text, manifest=manifest)
-    return {}
+    return None
 
 
 def _diff_records(
@@ -230,7 +274,8 @@ def analyze_dependency_file(
     base_text: str | None,
     head_text: str | None,
 ) -> tuple[list[DependencyChange], list[AnalyzerError]]:
-    errors: list[AnalyzerError] = []
+    if not _supports_dependency_parsing(path):
+        return [], [AnalyzerError(area="dependencies", path=path, message=f"unsupported dependency manifest format: {path}")]
     try:
         base_records = _records_from_text(base_text, manifest=path)
     except tomllib.TOMLDecodeError as exc:
@@ -239,4 +284,4 @@ def analyze_dependency_file(
         head_records = _records_from_text(head_text, manifest=path)
     except tomllib.TOMLDecodeError as exc:
         return [], [AnalyzerError(area="dependencies", path=path, message=str(exc))]
-    return _diff_records(base_records, head_records), errors
+    return _diff_records(base_records or {}, head_records or {}), []

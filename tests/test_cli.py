@@ -43,6 +43,7 @@ class CliTests(unittest.TestCase):
         data = json.loads((repo.root / "audit.json").read_text(encoding="utf-8"))
         self.assertEqual(data["scope"]["files_changed"], 0)
         self.assertEqual(data["dependencies"], [])
+        self.assertIn("No dependency manifest changes detected", (repo.root / "audit.md").read_text(encoding="utf-8"))
 
     def test_cli_rejects_invalid_ref(self) -> None:
         repo = TempRepo.create()

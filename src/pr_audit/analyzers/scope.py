@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 
 from ..git.diff import ChangedFile
 from ..models import CategoryCounts, Scope, TestsMetrics
+from .dependencies import is_dependency_manifest
 
 
 def classify_path(path: str) -> str:
@@ -13,7 +14,7 @@ def classify_path(path: str) -> str:
     parts = posix.parts
     name = posix.name
 
-    if name == "pyproject.toml" or name.startswith("requirements") and name.endswith(".txt"):
+    if is_dependency_manifest(path):
         return "dependency"
     if "tests" in parts or name.startswith("test_") or name.endswith("_test.py"):
         return "tests"
