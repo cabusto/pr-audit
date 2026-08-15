@@ -89,7 +89,7 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
                         errors.append(AnalyzerError(area="structure", path=path_for_category, message=str(exc)))
                     else:
                         if file_audit.structure is not None:
-                            if changed_file.status in {"added", "copied"}:
+                            if changed_file.status == "added":
                                 structure.production_files_added += 1
                             elif changed_file.status == "deleted":
                                 structure.production_files_deleted += 1
