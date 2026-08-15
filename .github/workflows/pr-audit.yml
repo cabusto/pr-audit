@@ -20,7 +20,7 @@ jobs:
       - name: Checkout base commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -32,7 +32,7 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e .
 
       - name: Fetch PR head
-        run: git fetch --no-tags --depth=1 origin pull/${{ github.event.pull_request.number }}/head:pr-head
+        run: git fetch --no-tags origin pull/${{ github.event.pull_request.number }}/head:pr-head
 
       - name: Run audit
         run: pr-audit analyze --base ${{ github.event.pull_request.base.sha }} --head pr-head --output out/
