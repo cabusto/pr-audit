@@ -55,10 +55,29 @@ class FunctionAudit:
 
 
 @dataclass(slots=True)
+class FileStructureMetrics:
+    classes_added: int = 0
+    classes_removed: int = 0
+    functions_added: int = 0
+    functions_removed: int = 0
+
+
+@dataclass(slots=True)
+class StructureMetrics:
+    production_files_added: int = 0
+    production_files_modified: int = 0
+    production_files_deleted: int = 0
+    classes_added: int = 0
+    classes_removed: int = 0
+    functions_added: int = 0
+    functions_removed: int = 0
+
+
+@dataclass(slots=True)
 class Hotspot:
     score: int
     severity: str
-    reasons: list[str] = field(default_factory=list)
+    reasons: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -72,6 +91,7 @@ class FileAudit:
     renamed_from: str | None = None
     analysis_error: str | None = None
     functions: list[FunctionAudit] = field(default_factory=list)
+    structure: FileStructureMetrics | None = None
     hotspot: Hotspot | None = None
 
 
@@ -103,6 +123,7 @@ class Audit:
     scope: Scope
     dependencies: list[DependencyChange] = field(default_factory=list)
     tests: TestsMetrics = field(default_factory=TestsMetrics)
+    structure: StructureMetrics = field(default_factory=StructureMetrics)
     files: list[FileAudit] = field(default_factory=list)
     summary: Summary = field(default_factory=Summary)
     errors: list[AnalyzerError] = field(default_factory=list)

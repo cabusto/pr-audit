@@ -214,7 +214,8 @@ def _parse_requirements(text: str, *, manifest: str) -> dict[str, _DependencyRec
 def _records_from_text(text: str | None, *, manifest: str) -> dict[str, _DependencyRecord] | None:
     if text is None:
         return {}
-    if manifest == "pyproject.toml":
+    name = PurePosixPath(manifest).name
+    if name == "pyproject.toml":
         return _parse_pyproject(text, manifest=manifest)
     if _supports_dependency_parsing(manifest):
         return _parse_requirements(text, manifest=manifest)
