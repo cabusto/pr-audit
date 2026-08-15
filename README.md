@@ -44,6 +44,13 @@ pr-audit --help
 pr-audit analyze --help
 ```
 
+## GitHub Actions
+
+- `.github/workflows/pr-audit.yml` runs on PR open, ready-for-review, synchronize, and reopen events, skipping draft PRs, then comments with `audit.md`.
+- The PR workflow updates a single bot comment in place instead of creating a new comment each run.
+- `.github/workflows/release.yml` publishes the package to PyPI when a GitHub Release is published.
+- Set the repository secret `PYPI_API_TOKEN` before using the release workflow.
+
 ## Example
 
 ```bash
