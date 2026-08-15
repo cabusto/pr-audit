@@ -103,14 +103,14 @@ def _render_structure(audit: Audit) -> list[str]:
         f"{_fmt_int(structure.classes_added)} {'class' if structure.classes_added == 1 else 'classes'} added",
         f"{_fmt_int(structure.functions_added)} {'function/method' if structure.functions_added == 1 else 'functions/methods'} added",
     ]
-    if structure.classes_removed or structure.functions_removed:
-        lines.extend(
-            [
-                f"{_fmt_int(structure.classes_removed)} {'class' if structure.classes_removed == 1 else 'classes'} removed",
-                f"{_fmt_int(structure.functions_removed)} {'function/method' if structure.functions_removed == 1 else 'functions/methods'} removed",
-            ]
+    if structure.classes_removed:
+        lines.append(
+            f"{_fmt_int(structure.classes_removed)} {'class' if structure.classes_removed == 1 else 'classes'} removed"
         )
-    return lines
+    if structure.functions_removed:
+        lines.append(
+            f"{_fmt_int(structure.functions_removed)} {'function/method' if structure.functions_removed == 1 else 'functions/methods'} removed"
+        )
 
 
 def _render_hotspot_reason(reason: dict[str, object]) -> str | None:
