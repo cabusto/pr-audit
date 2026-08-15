@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from ..models import Audit, DependencyChange, FileAudit, FunctionAudit
 
 
@@ -70,7 +72,7 @@ def _render_tests(audit: Audit) -> list[str]:
 
 def _render_complexity(audit: Audit) -> list[str]:
     changed = [
-        function
+        (file_audit, function)
         for file_audit in audit.files
         for function in file_audit.functions
         if function.cyclomatic_before is not None
@@ -78,18 +80,18 @@ def _render_complexity(audit: Audit) -> list[str]:
         and function.cyclomatic_after > function.cyclomatic_before
     ]
     changed.sort(
-        key=lambda function: (
-            -(function.cyclomatic_after - function.cyclomatic_before),
-            -(function.nesting_after - function.nesting_before),
-            function.qualname,
+        key=lambda item: (
+            -(item[1].cyclomatic_after - item[1].cyclomatic_before),
+            -(item[1].nesting_after - item[1].nesting_before),
+            item[1].qualname,
         )
     )
     lines = ["## Complexity", f"{_fmt_int(len(changed))} changed functions increased in complexity"]
     if not changed:
         return lines
     lines.append("")
-    for function in changed[:5]:
-        lines.append(function.qualname)
+    for file_audit, function in changed[:5]:
+        lines.append(_format_function_label(file_audit, function))
         lines.append(f"LOC         {function.loc_before} -> {function.loc_after}")
         lines.append(f"Complexity   {function.cyclomatic_before} -> {function.cyclomatic_after}")
         lines.append(f"Nesting      {function.nesting_before} -> {function.nesting_after}")
@@ -97,6 +99,16 @@ def _render_complexity(audit: Audit) -> list[str]:
     if lines[-1] == "":
         lines.pop()
     return lines
+
+
+def _format_function_label(file_audit: FileAudit, function: FunctionAudit) -> str:
+    # Strip the synthetic module prefix so the output reads like file: function.
+    module = Path(file_audit.path).stem
+    qualname = function.qualname
+    prefix = f"{module}."
+    if qualname.startswith(prefix):
+        qualname = qualname[len(prefix) :]
+    return f"{file_audit.path}: {qualname}"
 
 
 def _render_hotspots(audit: Audit) -> list[str]:

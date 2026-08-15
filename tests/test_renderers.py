@@ -241,7 +241,7 @@ class RendererTests(unittest.TestCase):
                 ## Complexity
                 1 changed functions increased in complexity
 
-                app.run
+                src/app.py: run
                 LOC         21 -> 26
                 Complexity   4 -> 7
                 Nesting      1 -> 3

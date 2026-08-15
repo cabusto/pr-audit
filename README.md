@@ -99,6 +99,32 @@ Added
 - File classification
 - Dependency changes from `pyproject.toml` and `requirements.txt`
 - Test vs production LOC
-- Changed Python functions
+- Changed Python functions, shown as `file.py: function`
 - Cyclomatic complexity and nesting
 - Deterministic review hotspots
+
+Cyclomatic complexity is a rough count of the independent control-flow paths in a function. It increases with branches, loops, `except` blocks, boolean operators, ternaries, and `match` cases. Higher numbers mean more paths to reason about, not necessarily bad code.
+
+Nesting depth is the deepest level of nested control flow inside the function.
+
+## Stable metrics
+
+These are the stable metric names used by the underlying audit model.
+
+| Metric | Meaning |
+| --- | --- |
+| `pr.loc.added` | Total added LOC across the audit |
+| `pr.loc.deleted` | Total deleted LOC across the audit |
+| `pr.files.changed` | Total changed files |
+| `pr.files.added` | Total added files |
+| `pr.files.deleted` | Total deleted files |
+| `dependency.runtime.added` | Runtime dependencies added in supported manifests |
+| `dependency.runtime.removed` | Runtime dependencies removed in supported manifests |
+| `dependency.runtime.changed` | Runtime dependency version changes |
+| `tests.files.changed` | Changed files classified as tests |
+| `tests.files.added` | Added files classified as tests |
+| `tests.loc.added` | Added LOC in test files |
+| `complexity.cyclomatic.max.before` | Highest cyclomatic complexity before the change |
+| `complexity.cyclomatic.max.after` | Highest cyclomatic complexity after the change |
+| `complexity.nesting.max.before` | Highest nesting depth before the change |
+| `complexity.nesting.max.after` | Highest nesting depth after the change |
