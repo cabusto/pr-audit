@@ -86,8 +86,9 @@ def analyze_changed_python_file(
         return []
 
     try:
-        base_functions = _parse_functions(base_text, filename=changed_file.old_path or changed_file.path) if base_text else []
-        head_functions = _parse_functions(head_text, filename=changed_file.path) if head_text else []
+        module_path = changed_file.path if changed_file.status != "deleted" else changed_file.old_path or changed_file.path
+        base_functions = _parse_functions(base_text, filename=module_path) if base_text else []
+        head_functions = _parse_functions(head_text, filename=module_path) if head_text else []
     except SyntaxError as exc:
         raise SyntaxError(f"{changed_file.path}: {exc.msg}") from exc
 

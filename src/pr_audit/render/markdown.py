@@ -92,6 +92,67 @@ def _render_tests(audit: Audit) -> list[str]:
     ]
 
 
+def _render_structure(audit: Audit) -> list[str]:
+    structure = audit.structure
+    lines = [
+        "## Structure",
+        "Production files",
+        f"{_fmt_int(structure.production_files_added)} added · {_fmt_int(structure.production_files_modified)} modified · {_fmt_int(structure.production_files_deleted)} deleted",
+        "",
+        "Python structure",
+        f"{_fmt_int(structure.classes_added)} {'class' if structure.classes_added == 1 else 'classes'} added",
+        f"{_fmt_int(structure.functions_added)} {'function/method' if structure.functions_added == 1 else 'functions/methods'} added",
+    ]
+    if structure.classes_removed or structure.functions_removed:
+        lines.extend(
+            [
+                f"{_fmt_int(structure.classes_removed)} {'class' if structure.classes_removed == 1 else 'classes'} removed",
+                f"{_fmt_int(structure.functions_removed)} {'function/method' if structure.functions_removed == 1 else 'functions/methods'} removed",
+            ]
+        )
+    return lines
+
+
+def _render_hotspot_reason(reason: dict[str, object]) -> str | None:
+    reason_type = reason.get("type")
+    value = reason.get("value")
+
+    if reason_type == "loc_changed" and isinstance(value, dict):
+        added = int(value.get("added", 0) or 0)
+        deleted = int(value.get("deleted", 0) or 0)
+        if added and deleted:
+            return f"+{_fmt_int(added)} / -{_fmt_int(deleted)} LOC"
+        if added:
+            return f"+{_fmt_int(added)} LOC"
+        if deleted:
+            return f"-{_fmt_int(deleted)} LOC"
+        return None
+    if reason_type == "largest_production_change":
+        return "Largest production change in this PR"
+    if reason_type == "production_file_added":
+        return "New production file"
+    if reason_type == "complexity_increase" and isinstance(value, int):
+        return f"Complexity +{value}"
+    if reason_type == "nesting_increase" and isinstance(value, int):
+        return f"Max nesting +{value}"
+    if reason_type == "runtime_dependency_added" and isinstance(value, int):
+        noun = "dependency" if value == 1 else "dependencies"
+        return f"{value} runtime {noun} added"
+    if reason_type == "test_only":
+        return "test-only"
+    if reason_type == "docs_only":
+        return "docs-only"
+    if reason_type == "config_only":
+        return "config-only"
+    if reason_type == "dependency_manifest":
+        return "dependency manifest"
+    if reason_type == "other":
+        return "other"
+    if reason_type is None:
+        return None
+    return str(reason_type)
+
+
 def _render_complexity(audit: Audit) -> list[str]:
     changed = [
         (file_audit, function)
@@ -151,8 +212,10 @@ def _render_hotspots(audit: Audit) -> list[str]:
         if not hotspot:
             continue
         lines.append(f"{hotspot.severity:<5} {file_audit.path}")
-        if hotspot.reasons:
-            lines.append(f"      {' · '.join(hotspot.reasons)}")
+        for reason in hotspot.reasons:
+            rendered = _render_hotspot_reason(reason)
+            if rendered:
+                lines.append(f"      {rendered}")
         lines.append("")
     if lines[-1] == "":
         lines.pop()
@@ -168,6 +231,8 @@ def render_markdown(audit: Audit) -> str:
         *_group_dependency_changes(audit),
         "",
         *_render_tests(audit),
+        "",
+        *_render_structure(audit),
         "",
         *_render_complexity(audit),
         "",

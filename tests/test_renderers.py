@@ -14,10 +14,12 @@ from pr_audit.models import (
     CategoryCounts,
     DependencyChange,
     FileAudit,
+    FileStructureMetrics,
     FunctionAudit,
     Hotspot,
     Metadata,
     Scope,
+    StructureMetrics,
     Summary,
     TestsMetrics,
 )
@@ -57,6 +59,15 @@ class RendererTests(unittest.TestCase):
                 ),
             ],
             tests=TestsMetrics(files_changed=1, files_added=1, loc_added=7, production_loc_added=5, production_test_ratio=5 / 7),
+            structure=StructureMetrics(
+                production_files_added=0,
+                production_files_modified=1,
+                production_files_deleted=0,
+                classes_added=1,
+                classes_removed=0,
+                functions_added=1,
+                functions_removed=0,
+            ),
             files=[
                 FileAudit(
                     path="src/app.py",
@@ -77,7 +88,16 @@ class RendererTests(unittest.TestCase):
                             nesting_after=3,
                         )
                     ],
-                    hotspot=Hotspot(score=112, severity="HIGH", reasons=["+10 / -2 LOC", "complexity +3", "max nesting +2"]),
+                    structure=FileStructureMetrics(classes_added=1, classes_removed=0, functions_added=1, functions_removed=0),
+                    hotspot=Hotspot(
+                        score=112,
+                        severity="HIGH",
+                        reasons=[
+                            {"type": "loc_changed", "value": {"added": 10, "deleted": 2}},
+                            {"type": "complexity_increase", "value": 3},
+                            {"type": "nesting_increase", "value": 2},
+                        ],
+                    ),
                 ),
                 FileAudit(
                     path="tests/test_app.py",
@@ -85,7 +105,15 @@ class RendererTests(unittest.TestCase):
                     category="tests",
                     loc_added=7,
                     loc_deleted=0,
-                    hotspot=Hotspot(score=0, severity="LOW", reasons=["+7 LOC", "test-only"]),
+                    structure=None,
+                    hotspot=Hotspot(
+                        score=0,
+                        severity="LOW",
+                        reasons=[
+                            {"type": "loc_changed", "value": {"added": 7, "deleted": 0}},
+                            {"type": "test_only"},
+                        ],
+                    ),
                 ),
             ],
             summary=Summary(changed_functions_increased=1, hotspot_count=1),
@@ -145,6 +173,15 @@ class RendererTests(unittest.TestCase):
                     "production_loc_added": 5,
                     "production_test_ratio": 5 / 7,
                 },
+                "structure": {
+                    "production_files_added": 0,
+                    "production_files_modified": 1,
+                    "production_files_deleted": 0,
+                    "classes_added": 1,
+                    "classes_removed": 0,
+                    "functions_added": 1,
+                    "functions_removed": 0,
+                },
                 "files": [
                     {
                         "path": "src/app.py",
@@ -168,10 +205,20 @@ class RendererTests(unittest.TestCase):
                                 "nesting_after": 3,
                             }
                         ],
+                        "structure": {
+                            "classes_added": 1,
+                            "classes_removed": 0,
+                            "functions_added": 1,
+                            "functions_removed": 0,
+                        },
                         "hotspot": {
                             "score": 112,
                             "severity": "HIGH",
-                            "reasons": ["+10 / -2 LOC", "complexity +3", "max nesting +2"],
+                            "reasons": [
+                                {"type": "loc_changed", "value": {"added": 10, "deleted": 2}},
+                                {"type": "complexity_increase", "value": 3},
+                                {"type": "nesting_increase", "value": 2},
+                            ],
                         },
                     },
                     {
@@ -184,10 +231,14 @@ class RendererTests(unittest.TestCase):
                         "renamed_from": None,
                         "analysis_error": None,
                         "functions": [],
+                        "structure": None,
                         "hotspot": {
                             "score": 0,
                             "severity": "LOW",
-                            "reasons": ["+7 LOC", "test-only"],
+                            "reasons": [
+                                {"type": "loc_changed", "value": {"added": 7, "deleted": 0}},
+                                {"type": "test_only"},
+                            ],
                         },
                     },
                 ],
@@ -238,6 +289,14 @@ class RendererTests(unittest.TestCase):
                 5 production LOC added
                 Production:test LOC ratio 0.7:1
 
+                ## Structure
+                Production files
+                0 added · 1 modified · 0 deleted
+
+                Python structure
+                1 class added
+                1 function/method added
+
                 ## Complexity
                 1 changed functions increased in complexity
 
@@ -248,10 +307,13 @@ class RendererTests(unittest.TestCase):
 
                 ## Review hotspots
                 HIGH  src/app.py
-                      +10 / -2 LOC · complexity +3 · max nesting +2
+                      +10 / -2 LOC
+                      Complexity +3
+                      Max nesting +2
 
                 LOW   tests/test_app.py
-                      +7 LOC · test-only
+                      +7 LOC
+                      test-only
                 """
             ),
         )

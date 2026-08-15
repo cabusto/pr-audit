@@ -4,10 +4,10 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .analyzers import analyze_changed_python_file, analyze_dependency_file, classify_path, summarize_scope, summarize_tests
+from .analyzers import analyze_changed_python_file, analyze_dependency_file, analyze_python_structure, classify_path, summarize_scope, summarize_tests
 from .errors import PrAuditError
 from .git import collect_changed_files, collect_hunks_for_file, git_toplevel, show_blob_text, validate_ref
-from .models import AnalyzerError, Audit, DependencyChange, FileAudit, Metadata, Summary
+from .models import AnalyzerError, Audit, DependencyChange, FileAudit, Metadata, StructureMetrics, Summary
 from .scoring import score_hotspots
 
 
@@ -32,6 +32,7 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
     files: list[FileAudit] = []
     dependencies: list[DependencyChange] = []
     errors: list[AnalyzerError] = []
+    structure = StructureMetrics()
 
     for changed_file in changed_files:
         path_for_category = changed_file.path if changed_file.status != "deleted" else changed_file.old_path or changed_file.path
@@ -75,6 +76,29 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
             except SyntaxError as exc:
                 file_audit.analysis_error = str(exc)
                 errors.append(AnalyzerError(area="functions", path=path_for_category, message=str(exc)))
+            else:
+                if category == "production":
+                    try:
+                        file_audit.structure = analyze_python_structure(
+                            changed_file,
+                            base_text=base_text,
+                            head_text=head_text,
+                        )
+                    except SyntaxError as exc:
+                        file_audit.analysis_error = str(exc)
+                        errors.append(AnalyzerError(area="structure", path=path_for_category, message=str(exc)))
+                    else:
+                        if file_audit.structure is not None:
+                            if changed_file.status in {"added", "copied"}:
+                                structure.production_files_added += 1
+                            elif changed_file.status == "deleted":
+                                structure.production_files_deleted += 1
+                            else:
+                                structure.production_files_modified += 1
+                            structure.classes_added += file_audit.structure.classes_added
+                            structure.classes_removed += file_audit.structure.classes_removed
+                            structure.functions_added += file_audit.structure.functions_added
+                            structure.functions_removed += file_audit.structure.functions_removed
 
         files.append(file_audit)
 
@@ -95,6 +119,7 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
         scope=scope,
         dependencies=dependencies,
         tests=tests,
+        structure=structure,
         files=files,
         summary=summary,
         errors=errors,

@@ -71,7 +71,21 @@ class HotspotTests(unittest.TestCase):
         self.assertEqual(dependency.hotspot.severity, "MED")
         self.assertEqual(small.hotspot.severity, "LOW")
         self.assertEqual(test_only.hotspot.severity, "LOW")
-        self.assertIn("complexity +4", production.hotspot.reasons)
-        self.assertIn("max nesting +2", production.hotspot.reasons)
-        self.assertIn("1 runtime dependencies added", dependency.hotspot.reasons)
-        self.assertIn("test-only", test_only.hotspot.reasons)
+        self.assertEqual(
+            production.hotspot.reasons,
+            [
+                {"type": "loc_changed", "value": {"added": 10, "deleted": 0}},
+                {"type": "largest_production_change"},
+                {"type": "complexity_increase", "value": 4},
+                {"type": "nesting_increase", "value": 2},
+            ],
+        )
+        self.assertEqual(
+            dependency.hotspot.reasons,
+            [
+                {"type": "loc_changed", "value": {"added": 1, "deleted": 0}},
+                {"type": "runtime_dependency_added", "value": 1},
+                {"type": "dependency_manifest"},
+            ],
+        )
+        self.assertEqual(test_only.hotspot.reasons, [{"type": "loc_changed", "value": {"added": 5, "deleted": 0}}, {"type": "test_only"}])
