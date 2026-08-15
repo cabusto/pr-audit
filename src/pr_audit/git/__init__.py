@@ -1,4 +1,4 @@
-from .content import git_toplevel, show_blob_text
+from .content import git_toplevel, infer_base_ref, show_blob_text
 from .diff import ChangedFile, DiffHunk, collect_changed_files, collect_hunks_for_file, validate_ref
 
 __all__ = [
@@ -6,6 +6,7 @@ __all__ = [
     "DiffHunk",
     "collect_changed_files",
     "collect_hunks_for_file",
+    "infer_base_ref",
     "git_toplevel",
     "show_blob_text",
     "validate_ref",

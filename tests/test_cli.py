@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 import unittest
@@ -52,9 +53,28 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not-a-ref", result.stderr)
 
+    def test_cli_infers_base_from_default_branch(self) -> None:
+        repo = TempRepo.create()
+        repo.write_text("src/app.py", "def f():\n    return 1\n")
+        repo.commit("base")
+        subprocess.run(["git", "branch", "-M", "main"], cwd=repo.root, check=True)
+        subprocess.run(["git", "checkout", "-q", "-b", "feature"], cwd=repo.root, check=True)
+        repo.write_text("src/app.py", "def f():\n    return 2\n")
+        repo.commit("head")
+
+        result = repo.run_cli("analyze")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Analyzing main...HEAD", result.stdout)
+
+        data = json.loads((repo.root / "audit.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["metadata"]["base_ref"], "main")
+        self.assertEqual(data["metadata"]["head_ref"], "HEAD")
+        self.assertEqual(data["scope"]["files_changed"], 1)
+
     def test_help_includes_example(self) -> None:
         repo = TempRepo.create()
         result = repo.run_cli("--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("Examples:", result.stdout)
+        self.assertIn("pr-audit analyze", result.stdout)
         self.assertIn("pr-audit analyze --base main --head HEAD", result.stdout)

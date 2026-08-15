@@ -18,13 +18,22 @@ python3 -m pip install -e .
 ## Run
 
 ```bash
+pr-audit analyze
+```
+
+By default, the CLI infers the base ref from the repo's default branch
+(`origin/HEAD`, `origin/main`, `main`, and a few common fallbacks).
+
+If you need an explicit range, use:
+
+```bash
 pr-audit analyze --base main --head HEAD
 ```
 
 If you have not installed the console script yet, use:
 
 ```bash
-python3 -m pr_audit analyze --base main --head HEAD
+python3 -m pr_audit analyze
 ```
 
 ## Output
