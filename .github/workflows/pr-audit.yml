@@ -1,7 +1,7 @@
 name: PR Audit
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - ready_for_review
@@ -47,12 +47,6 @@ jobs:
             const fs = require('fs');
             const marker = '<!-- pr-audit-comment -->';
             const body = `${marker}\n\n${fs.readFileSync('out/audit.md', 'utf8')}`;
-            const isFork = context.payload.pull_request.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`;
-            if (isFork) {
-              core.warning('Skipping PR comment for forked pull requests; the audit is available in the job summary.');
-              return;
-            }
-
             try {
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner: context.repo.owner,
