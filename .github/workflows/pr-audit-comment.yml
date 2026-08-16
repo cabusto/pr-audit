@@ -47,24 +47,28 @@ jobs:
             const marker = '<!-- pr-audit-comment -->';
             const body = `${marker}\n\n${fs.readFileSync('out/audit.md', 'utf8')}`;
             const issueNumber = parseInt(fs.readFileSync('out/pr_number.txt', 'utf8').trim(), 10);
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-            });
-            const existing = comments.find((comment) => comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body,
               });
+              const existing = comments.find((comment) => comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body,
+                });
+              }
+            } catch (error) {
+              core.warning(`Skipping PR comment: ${error.message}`);
             }
