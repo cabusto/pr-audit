@@ -1,0 +1,70 @@
+name: PR Audit Comment
+
+on:
+  workflow_run:
+    workflows:
+      - PR Audit
+    types:
+      - completed
+
+jobs:
+  comment:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - name: Check for audit artifact
+        id: artifact
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+            const artifact = artifacts.find((item) => item.name === 'pr-audit');
+            core.setOutput('found', artifact ? 'true' : 'false');
+
+      - name: Download audit artifact
+        if: ${{ steps.artifact.outputs.found == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-audit
+          path: out/
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Comment on PR
+        if: ${{ steps.artifact.outputs.found == 'true' }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- pr-audit-comment -->';
+            const body = `${marker}\n\n${fs.readFileSync('out/audit.md', 'utf8')}`;
+            const issueNumber = parseInt(fs.readFileSync('out/pr_number.txt', 'utf8').trim(), 10);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+            const existing = comments.find((comment) => comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
