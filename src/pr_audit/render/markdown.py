@@ -111,6 +111,7 @@ def _render_structure(audit: Audit) -> list[str]:
         lines.append(
             f"{_fmt_int(structure.functions_removed)} {'function/method' if structure.functions_removed == 1 else 'functions/methods'} removed"
         )
+    return lines
 
 
 def _render_hotspot_reason(reason: dict[str, object]) -> str | None:
