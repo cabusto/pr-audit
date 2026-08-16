@@ -9,11 +9,12 @@ on:
 
 jobs:
   comment:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       actions: read
       issues: write
+      pull-requests: write
     steps:
       - name: Check for audit artifact
         id: artifact
@@ -29,7 +30,7 @@ jobs:
             core.setOutput('found', artifact ? 'true' : 'false');
 
       - name: Download audit artifact
-        if: ${{ steps.artifact.outputs.found == 'true' }}
+        if: steps.artifact.outputs.found == 'true'
         uses: actions/download-artifact@v4
         with:
           name: pr-audit
@@ -39,7 +40,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Comment on PR
-        if: ${{ steps.artifact.outputs.found == 'true' }}
+        if: steps.artifact.outputs.found == 'true'
         uses: actions/github-script@v9
         with:
           script: |
