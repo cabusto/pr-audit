@@ -113,7 +113,7 @@ The action exposes `markdown-path` and `json-path` outputs.
 To comment on pull requests, including those from forks, keep the analysis job read-only and post the comment from a separate `workflow_run` workflow. This repository does this for its own PRs:
 
 - [`.github/workflows/pr-audit.yml`](.github/workflows/pr-audit.yml) runs on non-draft PRs with read-only permissions, then uploads the audit as an artifact.
-- [`.github/workflows/pr-audit-comment.yml`](.github/workflows/pr-audit-comment.yml) runs after it, downloads the artifact, and creates or updates a single bot comment.
+- [`.github/workflows/pr-audit-comment.yml`](.github/workflows/pr-audit-comment.yml) runs after it, downloads the artifact, identifies the PR from trusted `workflow_run` metadata, and creates or updates a single bot comment.
 
 Copy both files to use the same setup.
 
