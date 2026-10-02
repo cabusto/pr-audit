@@ -17,6 +17,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `LICENSE`, `COPYING`, `NOTICE`, `AUTHORS` and similar files classify as docs; `.gitignore`, `.editorconfig`, `*.cfg` and `*.ini` classify as config.
 - Releases publish to PyPI with trusted publishing instead of an API token.
 
+### Security
+- The PR comment workflow finds the target PR through the GitHub API instead of trusting a PR number from the analysis artifact, so a fork can no longer make the bot comment on other issues or PRs.
+
 ## [0.1.0]
 
 ### Added
