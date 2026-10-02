@@ -139,6 +139,13 @@ class HotspotTests(unittest.TestCase):
             loc_added=0,
             loc_deleted=20,
         )
+        nested = FileAudit(
+            path=".github/workflows/archive/old.yml",
+            status="modified",
+            category="config",
+            loc_added=3,
+            loc_deleted=0,
+        )
         other_config = FileAudit(
             path=".github/dependabot.yml",
             status="modified",
@@ -147,7 +154,7 @@ class HotspotTests(unittest.TestCase):
             loc_deleted=0,
         )
 
-        score_hotspots([workflow, action, removed_workflow, other_config], [])
+        score_hotspots([workflow, action, removed_workflow, nested, other_config], [])
 
         self.assertEqual(workflow.hotspot.score, 40)
         self.assertEqual(action.hotspot.score, 40)
@@ -158,3 +165,4 @@ class HotspotTests(unittest.TestCase):
         self.assertEqual(removed_workflow.hotspot.score, 0)
         self.assertIn({"type": "config_only"}, removed_workflow.hotspot.reasons)
         self.assertEqual(other_config.hotspot.score, 0)
+        self.assertEqual(nested.hotspot.score, 0)
