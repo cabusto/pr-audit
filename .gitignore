@@ -3,3 +3,15 @@ __pycache__/
 .pytest_cache/
 audit.json
 audit.md
+out/
+
+# Virtual environments
+.venv*/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Internal planning docs
+pr-audit-sprint-1-implementation-brief.*
