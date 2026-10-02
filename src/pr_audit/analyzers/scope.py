@@ -7,6 +7,12 @@ from ..git.diff import ChangedFile
 from ..models import CategoryCounts, Scope, TestsMetrics
 from .dependencies import is_dependency_manifest
 
+DOC_STEMS = {"license", "licence", "copying", "notice", "authors", "contributors", "changelog", "changes", "history"}
+DOC_SUFFIXES = {".md", ".rst"}
+DOC_STEM_SUFFIXES = {"", ".txt"}
+CONFIG_NAMES = {".gitignore", ".gitattributes", ".editorconfig", ".dockerignore", ".python-version"}
+CONFIG_SUFFIXES = {".toml", ".yaml", ".yml", ".cfg", ".ini"}
+
 
 def classify_path(path: str) -> str:
     lowered = path.lower()
@@ -18,9 +24,9 @@ def classify_path(path: str) -> str:
         return "dependency"
     if "tests" in parts or name.startswith("test_") or name.endswith("_test.py"):
         return "tests"
-    if name.endswith(".md") or "docs" in parts:
+    if posix.suffix in DOC_SUFFIXES or (posix.stem in DOC_STEMS and posix.suffix in DOC_STEM_SUFFIXES) or "docs" in parts:
         return "docs"
-    if ".github" in parts or name.endswith(".toml") or name.endswith(".yaml") or name.endswith(".yml"):
+    if ".github" in parts or name in CONFIG_NAMES or posix.suffix in CONFIG_SUFFIXES:
         return "config"
     if name.endswith(".py"):
         return "production"

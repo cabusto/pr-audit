@@ -22,6 +22,15 @@ class ScopeTests(unittest.TestCase):
             ".github/workflows/ci.yml": "config",
             "src/app.py": "production",
             "assets/logo.png": "other",
+            "LICENSE": "docs",
+            "LICENSE.txt": "docs",
+            "COPYING": "docs",
+            "CHANGELOG.rst": "docs",
+            "src/license.py": "production",
+            ".gitignore": "config",
+            ".editorconfig": "config",
+            "setup.cfg": "config",
+            "tox.ini": "config",
         }
         for path, expected in cases.items():
             with self.subTest(path=path):
