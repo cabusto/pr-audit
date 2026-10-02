@@ -15,7 +15,7 @@ def is_ci_workflow(path: str) -> bool:
     posix = PurePosixPath(path.lower())
     if posix.name in {"action.yml", "action.yaml"}:
         return True
-    return posix.suffix in {".yml", ".yaml"} and posix.parts[:2] == (".github", "workflows")
+    return posix.suffix in {".yml", ".yaml"} and posix.parent == PurePosixPath(".github/workflows")
 
 
 def _reason(reason_type: str, value: object | None = None) -> dict[str, object]:
