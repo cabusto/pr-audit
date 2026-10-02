@@ -11,6 +11,13 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pr-audit
+    permissions:
+      contents: read
+      # Required for PyPI trusted publishing.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +33,4 @@ jobs:
           python -m build
 
       - name: Publish to PyPI
-        # Requires a repository secret named PYPI_API_TOKEN.
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}

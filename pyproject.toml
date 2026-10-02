@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,8 +7,30 @@ name = "pr-audit"
 version = "0.1.0"
 description = "Deterministic pull-request observability for Python repositories"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = []
+keywords = ["pull-request", "code-review", "git", "complexity", "static-analysis", "github-actions"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+Homepage = "https://github.com/cabusto/pr-audit"
+Source = "https://github.com/cabusto/pr-audit"
+Issues = "https://github.com/cabusto/pr-audit/issues"
+Changelog = "https://github.com/cabusto/pr-audit/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pr-audit = "pr_audit.cli:main"

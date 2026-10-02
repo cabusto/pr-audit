@@ -1,0 +1,80 @@
+name: PR Audit
+description: Deterministic pull-request audit for Python repositories - scope, dependency changes, complexity deltas and review hotspots.
+author: cabusto
+branding:
+  icon: search
+  color: blue
+
+inputs:
+  base:
+    description: Base Git ref or SHA to compare from. Defaults to the pull request's base SHA.
+    required: false
+    default: ""
+  head:
+    description: Head Git ref or SHA to compare to. Defaults to the pull request's head SHA, or HEAD.
+    required: false
+    default: ""
+  format:
+    description: Output format - markdown, json or both.
+    required: false
+    default: both
+  output:
+    description: Directory to write audit.json and/or audit.md into.
+    required: false
+    default: pr-audit-out
+  python-version:
+    description: Python version used to run pr-audit.
+    required: false
+    default: "3.12"
+  step-summary:
+    description: Append audit.md to the job summary.
+    required: false
+    default: "true"
+
+outputs:
+  markdown-path:
+    description: Path to the generated audit.md, if written.
+    value: ${{ steps.audit.outputs.markdown-path }}
+  json-path:
+    description: Path to the generated audit.json, if written.
+    value: ${{ steps.audit.outputs.json-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install pr-audit
+      shell: bash
+      run: python -m pip install --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Run audit
+      id: audit
+      shell: bash
+      env:
+        INPUT_BASE: ${{ inputs.base || github.event.pull_request.base.sha }}
+        INPUT_HEAD: ${{ inputs.head || github.event.pull_request.head.sha || 'HEAD' }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+      run: |
+        args=(analyze --head "$INPUT_HEAD" --format "$INPUT_FORMAT" --output "$INPUT_OUTPUT")
+        if [[ -n "$INPUT_BASE" ]]; then
+          args+=(--base "$INPUT_BASE")
+        fi
+        pr-audit "${args[@]}"
+        if [[ -f "$INPUT_OUTPUT/audit.md" ]]; then
+          echo "markdown-path=$INPUT_OUTPUT/audit.md" >> "$GITHUB_OUTPUT"
+        fi
+        if [[ -f "$INPUT_OUTPUT/audit.json" ]]; then
+          echo "json-path=$INPUT_OUTPUT/audit.json" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Write job summary
+      if: inputs.step-summary == 'true' && steps.audit.outputs.markdown-path != ''
+      shell: bash
+      env:
+        MARKDOWN_PATH: ${{ steps.audit.outputs.markdown-path }}
+      run: cat "$MARKDOWN_PATH" >> "$GITHUB_STEP_SUMMARY"
