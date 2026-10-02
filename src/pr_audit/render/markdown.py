@@ -132,6 +132,10 @@ def _render_hotspot_reason(reason: dict[str, object]) -> str | None:
         return "Largest production change in this PR"
     if reason_type == "production_file_added":
         return "New production file"
+    if reason_type == "production_file_deleted":
+        return "Production file deleted"
+    if reason_type == "ci_workflow":
+        return "CI workflow or action definition"
     if reason_type == "complexity_increase" and isinstance(value, int):
         return f"Complexity +{value}"
     if reason_type == "nesting_increase" and isinstance(value, int):

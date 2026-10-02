@@ -12,6 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - CI workflow running the test suite on Python 3.12, 3.13 and 3.14.
 
 ### Changed
+- Deleted production files count a quarter of their deleted lines toward the hotspot score and are never the "largest production change".
+- CI workflow files (`.github/workflows/*.yml`) and `action.yml` now score as review hotspots.
+- `LICENSE`, `COPYING`, `NOTICE`, `AUTHORS` and similar files classify as docs; `.gitignore`, `.editorconfig`, `*.cfg` and `*.ini` classify as config.
 - Releases publish to PyPI with trusted publishing instead of an API token.
 
 ## [0.1.0]

@@ -89,3 +89,72 @@ class HotspotTests(unittest.TestCase):
             ],
         )
         self.assertEqual(test_only.hotspot.reasons, [{"type": "loc_changed", "value": {"added": 5, "deleted": 0}}, {"type": "test_only"}])
+
+    def test_deleted_production_file_is_down_weighted(self) -> None:
+        deleted = FileAudit(
+            path="src/legacy.py",
+            status="deleted",
+            category="production",
+            loc_added=0,
+            loc_deleted=40,
+        )
+        edited = FileAudit(
+            path="src/app.py",
+            status="modified",
+            category="production",
+            loc_added=12,
+            loc_deleted=3,
+        )
+
+        score_hotspots([deleted, edited], [])
+
+        self.assertEqual(deleted.hotspot.score, 10)
+        self.assertEqual(edited.hotspot.score, 15)
+        self.assertEqual(edited.hotspot.severity, "HIGH")
+        self.assertEqual(
+            deleted.hotspot.reasons,
+            [{"type": "loc_changed", "value": {"added": 0, "deleted": 40}}, {"type": "production_file_deleted"}],
+        )
+        self.assertIn({"type": "largest_production_change"}, edited.hotspot.reasons)
+
+    def test_ci_workflow_files_are_scored(self) -> None:
+        workflow = FileAudit(
+            path=".github/workflows/release.yml",
+            status="modified",
+            category="config",
+            loc_added=2,
+            loc_deleted=1,
+        )
+        action = FileAudit(
+            path="action.yml",
+            status="added",
+            category="config",
+            loc_added=80,
+            loc_deleted=0,
+        )
+        removed_workflow = FileAudit(
+            path=".github/workflows/old.yml",
+            status="deleted",
+            category="config",
+            loc_added=0,
+            loc_deleted=20,
+        )
+        other_config = FileAudit(
+            path=".github/dependabot.yml",
+            status="modified",
+            category="config",
+            loc_added=3,
+            loc_deleted=0,
+        )
+
+        score_hotspots([workflow, action, removed_workflow, other_config], [])
+
+        self.assertEqual(workflow.hotspot.score, 40)
+        self.assertEqual(action.hotspot.score, 40)
+        self.assertEqual(
+            workflow.hotspot.reasons,
+            [{"type": "loc_changed", "value": {"added": 2, "deleted": 1}}, {"type": "ci_workflow"}],
+        )
+        self.assertEqual(removed_workflow.hotspot.score, 0)
+        self.assertIn({"type": "config_only"}, removed_workflow.hotspot.reasons)
+        self.assertEqual(other_config.hotspot.score, 0)
