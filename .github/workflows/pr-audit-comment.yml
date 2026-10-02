@@ -47,19 +47,22 @@ jobs:
             const fs = require('fs');
             const marker = '<!-- pr-audit-comment -->';
             const body = `${marker}\n\n${fs.readFileSync('out/audit.md', 'utf8')}`;
-            const workflowRun = context.payload.workflow_run;
-            const pullRequests = (workflowRun.pull_requests || []).filter(
-              (pullRequest) => pullRequest.head?.sha === workflowRun.head_sha,
+            // workflow_run.pull_requests is empty for fork PRs, so look the PR up by head SHA and repo.
+            const run = context.payload.workflow_run;
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const matches = pulls.filter(
+              (pull) => pull.head.sha === run.head_sha && pull.head.repo?.full_name === run.head_repository?.full_name,
             );
-            if (
-              pullRequests.length !== 1
-              || !Number.isSafeInteger(pullRequests[0].number)
-              || pullRequests[0].number < 1
-            ) {
+            if (matches.length !== 1) {
               core.warning('Skipping PR comment: could not identify the PR for this workflow run.');
               return;
             }
-            const issueNumber = pullRequests[0].number;
+            const issueNumber = matches[0].number;
             try {
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner: context.repo.owner,
