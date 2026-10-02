@@ -38,9 +38,6 @@ jobs:
       - name: Write audit summary
         run: cat out/audit.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Save PR number
-        run: echo "${{ github.event.pull_request.number }}" > out/pr_number.txt
-
       - name: Upload audit artifact
         uses: actions/upload-artifact@v4
         with:
