@@ -17,6 +17,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `LICENSE`, `COPYING`, `NOTICE`, `AUTHORS` and similar files classify as docs; `.gitignore`, `.editorconfig`, `*.cfg` and `*.ini` classify as config.
 - Releases publish to PyPI with trusted publishing instead of an API token.
 
+### Fixed
+- Base-side file contents are read from the merge-base, matching the diff. Previously the audit failed when the base branch had deleted a changed file since the branch point, and function metrics compared against the wrong version otherwise.
+- Files that can't be decoded no longer abort the audit. Only Python files and dependency manifests are read; Python files honour PEP 263 coding declarations; undecodable ones are reported as analysis errors.
+- Submodule changes no longer abort the audit.
+- Non-UTF-8 filenames no longer crash report writing.
+- `pyproject.toml` values with the wrong type (for example `dependencies = "requests"`) are reported as dependency errors instead of producing bogus dependencies or a traceback.
+
 ### Security
 - The PR comment workflow finds the target PR through the GitHub API instead of trusting a PR number from the analysis artifact, so a fork can no longer make the bot comment on other issues or PRs.
 

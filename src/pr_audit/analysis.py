@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .analyzers import analyze_changed_python_file, analyze_dependency_file, analyze_python_structure, classify_path, summarize_scope, summarize_tests
-from .errors import PrAuditError
-from .git import collect_changed_files, collect_hunks_for_file, git_toplevel, show_blob_text, validate_ref
+from .errors import BlobDecodeError
+from .git import collect_changed_files, collect_hunks_for_file, git_toplevel, merge_base, show_blob_text, validate_ref
 from .models import AnalyzerError, Audit, DependencyChange, FileAudit, Metadata, StructureMetrics, Summary
 from .scoring import score_hotspots
 
@@ -26,6 +26,8 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
     validate_ref(repo_root, head_ref)
 
     changed_files = collect_changed_files(repo_root, base_ref, head_ref)
+    # `base...head` diffs against the merge-base, so base-side contents must come from there too.
+    base_commit = merge_base(repo_root, base_ref, head_ref)
     scope = summarize_scope(changed_files)
     tests = summarize_tests(changed_files)
 
@@ -49,11 +51,20 @@ def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at:
 
         base_text = None
         head_text = None
-        if not changed_file.binary:
-            if changed_file.status != "added":
-                base_text = show_blob_text(repo_root, base_ref, changed_file.old_path or changed_file.path, required=True)
-            if changed_file.status != "deleted":
-                head_text = show_blob_text(repo_root, head_ref, changed_file.path, required=True)
+        # Only manifests and Python files are analyzed; reading anything else (submodules, data files) can only fail.
+        needs_text = category == "dependency" or path_for_category.endswith(".py")
+        if needs_text and not changed_file.binary:
+            try:
+                if changed_file.status != "added":
+                    base_text = show_blob_text(repo_root, base_commit, changed_file.old_path or changed_file.path, required=True)
+                if changed_file.status != "deleted":
+                    head_text = show_blob_text(repo_root, head_ref, changed_file.path, required=True)
+            except BlobDecodeError as exc:
+                file_audit.analysis_error = str(exc)
+                area = "dependencies" if category == "dependency" else "functions"
+                errors.append(AnalyzerError(area=area, path=path_for_category, message=str(exc)))
+                files.append(file_audit)
+                continue
 
         if category == "dependency":
             dependency_changes, dependency_errors = analyze_dependency_file(

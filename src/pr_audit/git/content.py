@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 from pathlib import Path
 
-from ..errors import GitCommandError, InvalidGitRefError, PrAuditError
+from ..errors import BlobDecodeError, GitCommandError, InvalidGitRefError, PrAuditError
 from .diff import validate_ref
 
 
@@ -30,9 +31,24 @@ def show_blob_text(repo_root: Path, ref: str, path: str, *, required: bool = Tru
     try:
         return completed.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
-        if not required:
-            return None
-        raise GitCommandError(command, f"unable to decode {path} at {ref}: {exc}") from exc
+        error: Exception = exc
+    if path.endswith(".py"):
+        # Honour PEP 263 coding declarations such as `# -*- coding: latin-1 -*-`.
+        try:
+            return importlib.util.decode_source(completed.stdout)
+        except (SyntaxError, UnicodeDecodeError, LookupError) as exc:
+            error = exc
+    if not required:
+        return None
+    raise BlobDecodeError(f"unable to decode {path} at {ref}: {error}")
+
+
+def merge_base(repo_root: Path, base_ref: str, head_ref: str) -> str:
+    completed = _run_git(repo_root, "merge-base", base_ref, head_ref)
+    if completed.returncode != 0:
+        command = ["git", "-C", str(repo_root), "merge-base", base_ref, head_ref]
+        raise GitCommandError(command, completed.stderr.decode("utf-8", "replace") or "no merge base found")
+    return completed.stdout.decode("utf-8").strip()
 
 
 def infer_base_ref(repo_root: Path) -> str:
