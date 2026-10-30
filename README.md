@@ -1,34 +1,135 @@
 # PR Audit
 
+### Stop reading pull requests top to bottom. Start where the risk is.
+
+PR Audit reads a Python pull request and tells you, in seconds, **what changed, how big it is, which functions got harder to reason about, and which files to review first.**
+
+Free forever. MIT licensed. No account, no server, no API key, no paid tier waiting around the corner.
+
 [![PyPI](https://img.shields.io/pypi/v/pr-audit)](https://pypi.org/project/pr-audit/)
 [![Python](https://img.shields.io/pypi/pyversions/pr-audit)](https://pypi.org/project/pr-audit/)
 [![CI](https://github.com/cabusto/pr-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/cabusto/pr-audit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-PR Audit is a deterministic, local-first CLI for orienting yourself in a Python pull request.
+```bash
+pip install pr-audit && pr-audit analyze
+```
 
-It compares two Git refs, classifies the changed files, analyzes dependency and Python function changes, and writes a stable audit in:
+---
 
-- `audit.json`
-- `audit.md`
+## This is what your reviewers see
 
-It is meant to help a reviewer decide where to start, not to judge whether the change is good or bad.
+An 11-file, +425 / -48 line PR, boiled down to a reading order. This excerpt is real output from PR Audit's own history:
 
-## Why PR Audit
+```text
+## Review hotspots
+HIGH  src/pr_audit/scoring/hotspots.py
+      +39 / -30 LOC
+      Largest production change in this PR
+      Complexity +12
 
-Tools like radon, complexipy and diff-cover measure files or coverage. PR Audit is scoped to a single pull request: it answers "what changed, how big is it, and where should I look first?"
+HIGH  src/pr_audit/analysis.py
+      +27 / -2 LOC
+      Complexity +5
+      Max nesting +4
 
-- **Reviewers** get a short, ranked list of hotspots instead of scrolling a large diff top to bottom.
-- **Authors** see the complexity and nesting they added before asking for review.
-- **Maintainers** spot new runtime dependencies and production changes that arrive without tests.
+MED   src/pr_audit/analyzers/structure.py
+      +59 LOC
+      New production file
 
-The output is deterministic, so the same refs always produce the same audit. It needs no network access and no third-party dependencies, and it never executes the code under review. Python files are parsed with `ast`.
+## Complexity
+src/pr_audit/analysis.py: analyze_repo
+LOC         78 -> 103
+Complexity   17 -> 22
+Nesting      3 -> 7
+```
+
+Before you open a single file, you know that `analyze_repo` went from nesting depth 3 to 7. That is the function to read slowly. [See the full audit ↓](#example)
+
+---
+
+## Why teams use it
+
+**⏱ Review faster.** A 40-file diff becomes a ranked list of three or four files that deserve real attention. Reviewers spend their focus where the complexity actually moved, not on renamed imports and fixture churn.
+
+**🔍 Catch what skimming misses.** Nesting that jumped from 3 to 7. A function that doubled in branches. A new runtime dependency tucked into `pyproject.toml`. 200 lines of production code with no test changes. PR Audit surfaces each of these as a number, so none of it hides in the scroll.
+
+**✍️ Self-review before you ask.** Authors run it locally and see the complexity they added *before* requesting review. Fewer "can you split this up?" round trips.
+
+**🤝 Orientation, not gatekeeping.** PR Audit doesn't grade your code or block your merge. It gives everyone the same map of the change, so review conversations start from facts instead of first impressions.
+
+**🔒 Safe to run anywhere.** No network access, no third-party dependencies, and it never executes the code under review. Python is parsed with the standard library's `ast`. Running it on a fork PR never runs the fork's code.
+
+**♻️ Deterministic.** The same two refs always produce the same findings. No sampling, no LLM guesswork, no "it said something different this time".
+
+---
+
+## Get started in 30 seconds
+
+**On your machine:**
+
+```bash
+pip install pr-audit
+cd your-repo
+pr-audit analyze
+```
+
+The base branch is inferred automatically. You get `audit.md` for humans and `audit.json` for tooling.
+
+**On every pull request (GitHub Actions):**
+
+```yaml
+# .github/workflows/pr-audit.yml
+name: PR Audit
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: cabusto/pr-audit@v1
+```
+
+The audit lands in the job summary of every PR. Want it as a PR comment that updates itself, including on fork PRs? [It takes two files](#posting-the-audit-as-a-pr-comment).
+
+---
+
+## How it compares
+
+| | **PR Audit** | radon / complexipy | Danger | CodeClimate / SonarQube |
+|---|---|---|---|---|
+| Scoped to one PR's diff | ✅ | ❌ whole files | ✅ | Partly |
+| Before → after complexity per changed function | ✅ | ❌ | Write it yourself | Trends, not per-PR deltas |
+| Ranked "read this first" list | ✅ | ❌ | ❌ | ❌ |
+| Setup | One command, zero config | CLI | Write rules in JS/Ruby | Hosted service or server |
+| Accounts, tokens, network | None | None | GitHub token | Required |
+| Price | **Free forever** | Free | Free | Paid tiers |
+
+PR Audit doesn't replace your linter, your tests, or your coverage tool. It answers the question those tools leave open: *"Where should I look first?"*
+
+---
+
+## Free forever, really
+
+PR Audit is MIT licensed and runs entirely on your machine or your CI runner. There is no hosted backend to shut down, no usage cap, no telemetry, and no "community edition". The whole tool is what you see in this repo.
+
+If it saves your team time, the best thanks is a ⭐ star, a bug report, or an idea in [Issues](https://github.com/cabusto/pr-audit/issues).
+
+---
+
+# Reference
 
 ## Install
 
 ```bash
 python3 -m pip install pr-audit
 ```
+
+Requires Python 3.12+. Currently analyzes Python repositories.
 
 To work on PR Audit itself, install from a clone:
 
@@ -76,26 +177,7 @@ pr-audit analyze --help
 
 ## GitHub Action
 
-PR Audit ships as a composite action. The audit is written to the job summary and to `pr-audit-out/`.
-
-```yaml
-name: PR Audit
-
-on:
-  pull_request:
-
-permissions:
-  contents: read
-
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: cabusto/pr-audit@v1
-```
+PR Audit ships as a composite action. The audit is written to the job summary and to `pr-audit-out/`. The checkout needs `fetch-depth: 0` so both refs are available.
 
 | Input | Default | Meaning |
 | --- | --- | --- |
@@ -264,4 +346,12 @@ Release notes are in [CHANGELOG.md](CHANGELOG.md). Publishing a GitHub Release u
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Free to use, modify and ship, forever.
+
+---
+
+**Try it on your last PR.** It takes one command, and you'll know within a minute whether it earns a place in your workflow.
+
+```bash
+pip install pr-audit && pr-audit analyze
+```
