@@ -51,6 +51,11 @@ def merge_base(repo_root: Path, base_ref: str, head_ref: str) -> str:
     return completed.stdout.decode("utf-8").strip()
 
 
+def is_shallow_repository(repo_root: Path) -> bool:
+    completed = _run_git(repo_root, "rev-parse", "--is-shallow-repository")
+    return completed.stdout.decode("utf-8").strip() == "true"
+
+
 def infer_base_ref(repo_root: Path) -> str:
     command = ["git", "-C", str(repo_root), "remote"]
     completed = subprocess.run(command, check=False, capture_output=True, text=True)

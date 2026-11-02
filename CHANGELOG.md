@@ -16,6 +16,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - CI workflow files (`.github/workflows/*.yml`) and `action.yml` now score as review hotspots.
 - `LICENSE`, `COPYING`, `NOTICE`, `AUTHORS` and similar files classify as docs; `.gitignore`, `.editorconfig`, `*.cfg` and `*.ini` classify as config.
 - Releases publish to PyPI with trusted publishing instead of an API token.
+- The release workflow runs the test suite before publishing.
+- Markdown report sections are fenced code blocks, so GitHub keeps their line breaks and column alignment.
+- A shallow clone that is missing the base commit fails with a hint to fetch full history.
 
 ### Fixed
 - Base-side file contents are read from the merge-base, matching the diff. Previously the audit failed when the base branch had deleted a changed file since the branch point, and function metrics compared against the wrong version otherwise.
@@ -26,6 +29,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Security
 - The PR comment workflow finds the target PR through the GitHub API instead of trusting a PR number from the analysis artifact, so a fork can no longer make the bot comment on other issues or PRs.
+- The PR comment workflow rebuilds the comment from the uploaded report, keeping only plain section headings and putting everything else in code blocks, so a fork's report can't post links, images or @mentions.
+- File paths in the markdown report can't break out of its code blocks.
+- All workflow and action dependencies are pinned to commit SHAs and kept current by Dependabot.
 
 ## [0.1.0]
 

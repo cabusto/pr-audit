@@ -216,10 +216,11 @@ Analyzing 1dd873b...69af933
 <details>
 <summary>Generated <code>audit.md</code></summary>
 
-```md
+````md
 # PR Audit
 
 ## Scope
+```text
 +425 / -48 LOC
 11 files changed · 2 added · 0 deleted
 
@@ -229,17 +230,23 @@ Config      0
 Docs        0
 Dependency  0
 Other       0
+```
 
 ## Dependencies
+```text
 No dependency manifest changes detected
+```
 
 ## Tests
+```text
 3 test files changed · 1 added
 204 test LOC added
 221 production LOC added
 Production:test LOC ratio 1.1:1
+```
 
 ## Structure
+```text
 Production files
 1 added · 7 modified · 0 deleted
 
@@ -247,8 +254,10 @@ Python structure
 3 classes added
 9 functions/methods added
 1 function/method removed
+```
 
 ## Complexity
+```text
 4 changed functions increased in complexity
 
 src/pr_audit/scoring/hotspots.py: score_hotspots
@@ -270,8 +279,10 @@ src/pr_audit/analyzers/functions.py: analyze_changed_python_file
 LOC         46 -> 47
 Complexity   22 -> 23
 Nesting      2 -> 2
+```
 
 ## Review hotspots
+```text
 HIGH  src/pr_audit/scoring/hotspots.py
       +39 / -30 LOC
       Largest production change in this PR
@@ -296,6 +307,7 @@ LOW   src/pr_audit/analyzers/functions.py
       +3 / -2 LOC
       Complexity +1
 ```
+````
 
 </details>
 
