@@ -53,12 +53,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _write_outputs(output_dir: Path, output_format: str, json_text: str, markdown_text: str) -> list[str]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Non-UTF-8 filenames arrive as surrogate escapes; write them as \udcXX instead of crashing.
     written: list[str] = []
     if output_format in {"json", "both"}:
-        (output_dir / "audit.json").write_text(json_text, encoding="utf-8")
+        (output_dir / "audit.json").write_text(json_text, encoding="utf-8", errors="backslashreplace")
         written.append("audit.json")
     if output_format in {"markdown", "both"}:
-        (output_dir / "audit.md").write_text(markdown_text, encoding="utf-8")
+        (output_dir / "audit.md").write_text(markdown_text, encoding="utf-8", errors="backslashreplace")
         written.append("audit.md")
     return written
 

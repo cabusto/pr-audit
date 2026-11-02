@@ -139,19 +139,35 @@ def _requirements_dependency_type(manifest: str) -> str:
     return "runtime"
 
 
+def _table(value: Any, where: str) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{where} must be a table")
+    return value
+
+
+def _string_list(value: Any, where: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"{where} must be a list of strings")
+    return value
+
+
 def _parse_pyproject(text: str, *, manifest: str) -> dict[str, _DependencyRecord]:
     data = tomllib.loads(text)
     records: dict[str, _DependencyRecord] = {}
 
-    project = data.get("project") or {}
-    for item in project.get("dependencies", []):
+    project = _table(data.get("project"), "project")
+    for item in _string_list(project.get("dependencies"), "project.dependencies"):
         record = _parse_requirement_line(item, manifest=manifest, section="project.dependencies", dependency_type="runtime")
         if record:
             records[f"project.dependencies::{record.key}"] = record
 
-    optional = project.get("optional-dependencies") or {}
+    optional = _table(project.get("optional-dependencies"), "project.optional-dependencies")
     for group, items in optional.items():
-        for item in items:
+        for item in _string_list(items, f"project.optional-dependencies.{group}"):
             record = _parse_requirement_line(
                 item,
                 manifest=manifest,
@@ -161,9 +177,9 @@ def _parse_pyproject(text: str, *, manifest: str) -> dict[str, _DependencyRecord
             if record:
                 records[f"project.optional-dependencies.{group}::{record.key}"] = record
 
-    tool = data.get("tool") or {}
-    poetry = tool.get("poetry") or {}
-    for name, value in (poetry.get("dependencies") or {}).items():
+    tool = _table(data.get("tool"), "tool")
+    poetry = _table(tool.get("poetry"), "tool.poetry")
+    for name, value in _table(poetry.get("dependencies"), "tool.poetry.dependencies").items():
         if name == "python":
             continue
         specifier, dependency_type = _stringify_poetry_value(value)
@@ -177,10 +193,11 @@ def _parse_pyproject(text: str, *, manifest: str) -> dict[str, _DependencyRecord
             section="tool.poetry.dependencies",
         )
 
-    groups = poetry.get("group") or {}
+    groups = _table(poetry.get("group"), "tool.poetry.group")
     for group, group_data in groups.items():
         dependency_type = _poetry_group_type(group)
-        for name, value in (group_data.get("dependencies") or {}).items():
+        group_table = _table(group_data, f"tool.poetry.group.{group}")
+        for name, value in _table(group_table.get("dependencies"), f"tool.poetry.group.{group}.dependencies").items():
             if name == "python":
                 continue
             specifier, value_type = _stringify_poetry_value(value)
@@ -279,10 +296,10 @@ def analyze_dependency_file(
         return [], [AnalyzerError(area="dependencies", path=path, message=f"unsupported dependency manifest format: {path}")]
     try:
         base_records = _records_from_text(base_text, manifest=path)
-    except tomllib.TOMLDecodeError as exc:
+    except ValueError as exc:  # includes tomllib.TOMLDecodeError
         return [], [AnalyzerError(area="dependencies", path=path, message=str(exc))]
     try:
         head_records = _records_from_text(head_text, manifest=path)
-    except tomllib.TOMLDecodeError as exc:
+    except ValueError as exc:  # includes tomllib.TOMLDecodeError
         return [], [AnalyzerError(area="dependencies", path=path, message=str(exc))]
     return _diff_records(base_records or {}, head_records or {}), []

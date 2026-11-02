@@ -24,5 +24,9 @@ class GitCommandError(PrAuditError):
         return f"git command failed: {joined}"
 
 
+class BlobDecodeError(PrAuditError):
+    """A file's contents could not be decoded as text."""
+
+
 class OutputError(PrAuditError):
     pass

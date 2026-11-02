@@ -207,7 +207,8 @@ def collect_hunks_for_file(
         "--",
         *paths,
     ]
-    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    # Only hunk headers are parsed, so undecodable content lines are harmless.
+    completed = subprocess.run(command, check=False, capture_output=True, text=True, errors="replace")
     if completed.returncode != 0:
         raise GitCommandError(command, completed.stderr)
 
