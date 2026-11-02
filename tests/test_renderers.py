@@ -266,6 +266,7 @@ class RendererTests(unittest.TestCase):
                 # PR Audit
 
                 ## Scope
+                ```text
                 +12 / -4 LOC
                 2 files changed · 1 added · 0 deleted
 
@@ -275,37 +276,47 @@ class RendererTests(unittest.TestCase):
                 Docs        0
                 Dependency  0
                 Other       0
+                ```
 
                 ## Dependencies
+                ```text
                 Added
                 + jsonschema
 
                 Updated
                 pydantic 2.8 -> 2.9
+                ```
 
                 ## Tests
+                ```text
                 1 test files changed · 1 added
                 7 test LOC added
                 5 production LOC added
                 Production:test LOC ratio 0.7:1
+                ```
 
                 ## Structure
+                ```text
                 Production files
                 0 added · 1 modified · 0 deleted
 
                 Python structure
                 1 class added
                 1 function/method added
+                ```
 
                 ## Complexity
+                ```text
                 1 changed functions increased in complexity
 
                 src/app.py: run
                 LOC         21 -> 26
                 Complexity   4 -> 7
                 Nesting      1 -> 3
+                ```
 
                 ## Review hotspots
+                ```text
                 HIGH  src/app.py
                       +10 / -2 LOC
                       Complexity +3
@@ -314,6 +325,7 @@ class RendererTests(unittest.TestCase):
                 LOW   tests/test_app.py
                       +7 LOC
                       test-only
+                ```
                 """
             ),
         )

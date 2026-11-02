@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Check for audit artifact
         id: artifact
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
@@ -31,7 +31,7 @@ jobs:
 
       - name: Download audit artifact
         if: steps.artifact.outputs.found == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: pr-audit
           path: out/
@@ -41,12 +41,35 @@ jobs:
 
       - name: Comment on PR
         if: steps.artifact.outputs.found == 'true'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- pr-audit-comment -->';
-            const body = `${marker}\n\n${fs.readFileSync('out/audit.md', 'utf8')}`;
+            // audit.md comes from the PR's own run, so a fork controls it. Keep only plain-word headings and
+            // re-fence everything else, so links, images and @mentions in it never render.
+            const lines = fs.readFileSync('out/audit.md', 'utf8').slice(0, 60000).split('\n');
+            const out = [marker, ''];
+            let chunk = [];
+            const flush = () => {
+              while (chunk.length && !chunk[0].trim()) chunk.shift();
+              while (chunk.length && !chunk[chunk.length - 1].trim()) chunk.pop();
+              if (!chunk.length) return;
+              const runs = chunk.flatMap((line) => line.match(/`+/g) || []);
+              const fence = '`'.repeat(Math.max(3, ...runs.map((run) => run.length + 1)));
+              out.push(`${fence}text`, ...chunk, fence, '');
+              chunk = [];
+            };
+            for (const line of lines) {
+              if (/^#{1,2} [A-Za-z ]+$/.test(line)) {
+                flush();
+                out.push(line);
+              } else if (!/^`{3,}(text)?$/.test(line)) {
+                chunk.push(line);
+              }
+            }
+            flush();
+            const body = out.join('\n');
             // workflow_run.pull_requests is empty for fork PRs, so look the PR up by head SHA and repo.
             const run = context.payload.workflow_run;
             const pulls = await github.paginate(github.rest.pulls.list, {

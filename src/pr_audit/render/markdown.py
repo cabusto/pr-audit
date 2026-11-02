@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..models import Audit, DependencyChange, FileAudit, FunctionAudit
@@ -227,20 +228,33 @@ def _render_hotspots(audit: Audit) -> list[str]:
     return lines
 
 
+def _fence(body: list[str]) -> str:
+    # A fence longer than any backtick run in the body, so file paths can't close it.
+    longest = max((len(run) for line in body for run in re.findall(r"`+", line)), default=0)
+    return "`" * max(3, longest + 1)
+
+
+def _section(lines: list[str]) -> list[str]:
+    # Fixed-width body in a code block: GitHub keeps line breaks and doesn't render links or @mentions from paths.
+    heading, body = lines[0], lines[1:]
+    fence = _fence(body)
+    return [heading, f"{fence}text", *body, fence]
+
+
 def render_markdown(audit: Audit) -> str:
     sections = [
         "# PR Audit",
         "",
-        *_render_scope(audit),
+        *_section(_render_scope(audit)),
         "",
-        *_group_dependency_changes(audit),
+        *_section(_group_dependency_changes(audit)),
         "",
-        *_render_tests(audit),
+        *_section(_render_tests(audit)),
         "",
-        *_render_structure(audit),
+        *_section(_render_structure(audit)),
         "",
-        *_render_complexity(audit),
+        *_section(_render_complexity(audit)),
         "",
-        *_render_hotspots(audit),
+        *_section(_render_hotspots(audit)),
     ]
     return "\n".join(sections).rstrip() + "\n"

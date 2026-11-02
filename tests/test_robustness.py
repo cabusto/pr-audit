@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from helpers import TempRepo
 from pr_audit.analysis import analyze_repo
+from pr_audit.errors import PrAuditError
+from pr_audit.render import render_markdown
 
 
 GENERATED_AT = "2024-01-01T00:00:00Z"
@@ -107,6 +109,32 @@ class RobustnessTests(unittest.TestCase):
 
                 self.assertEqual(audit.dependencies, [])
                 self.assertEqual([error.area for error in audit.errors], ["dependencies"])
+
+    def test_shallow_clone_error_says_how_to_fix(self) -> None:
+        repo = TempRepo.create()
+        repo.write_text("src/a.py", "def f():\n    return 1\n")
+        base = repo.commit("base")
+        repo.write_text("src/a.py", "def f():\n    return 2\n")
+        repo.commit("head")
+        shallow = TempRepo(root=repo.root.parent / f"{repo.root.name}-shallow")
+        subprocess.run(["git", "clone", "-q", "--depth", "1", repo.root.as_uri(), str(shallow.root)], check=True)
+
+        with self.assertRaisesRegex(PrAuditError, "shallow clone.*fetch-depth: 0"):
+            analyze_repo(shallow.root, base, "HEAD", generated_at=GENERATED_AT)
+
+    def test_markdown_paths_cannot_escape_code_block(self) -> None:
+        repo = TempRepo.create()
+        repo.write_text("README.md", "x\n")
+        base = repo.commit("base")
+        repo.write_text("docs/```@team [x](evil.example).md", "x\n")
+        head = repo.commit("head")
+
+        markdown = render_markdown(analyze_repo(repo.root, base, head, generated_at=GENERATED_AT))
+
+        hotspots = markdown[markdown.index("## Review hotspots"):].splitlines()
+        self.assertEqual(hotspots[1], "````text")
+        self.assertEqual(hotspots[-1], "````")
+        self.assertIn("@team [x](evil.example)", hotspots[2])
 
 
 if __name__ == "__main__":

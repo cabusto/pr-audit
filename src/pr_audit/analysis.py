@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .analyzers import analyze_changed_python_file, analyze_dependency_file, analyze_python_structure, classify_path, summarize_scope, summarize_tests
-from .errors import BlobDecodeError
-from .git import collect_changed_files, collect_hunks_for_file, git_toplevel, merge_base, show_blob_text, validate_ref
+from .errors import BlobDecodeError, PrAuditError
+from .git import collect_changed_files, collect_hunks_for_file, git_toplevel, is_shallow_repository, merge_base, show_blob_text, validate_ref
 from .models import AnalyzerError, Audit, DependencyChange, FileAudit, Metadata, StructureMetrics, Summary
 from .scoring import score_hotspots
 
@@ -22,12 +22,20 @@ def _changed_path_for_classification(file_audit: FileAudit) -> str:
 
 
 def analyze_repo(repo_root: Path, base_ref: str, head_ref: str, *, generated_at: str | None = None) -> Audit:
-    validate_ref(repo_root, base_ref)
-    validate_ref(repo_root, head_ref)
+    try:
+        validate_ref(repo_root, base_ref)
+        validate_ref(repo_root, head_ref)
 
-    changed_files = collect_changed_files(repo_root, base_ref, head_ref)
-    # `base...head` diffs against the merge-base, so base-side contents must come from there too.
-    base_commit = merge_base(repo_root, base_ref, head_ref)
+        changed_files = collect_changed_files(repo_root, base_ref, head_ref)
+        # `base...head` diffs against the merge-base, so base-side contents must come from there too.
+        base_commit = merge_base(repo_root, base_ref, head_ref)
+    except PrAuditError as exc:
+        if not is_shallow_repository(repo_root):
+            raise
+        raise PrAuditError(
+            f"{exc}\nThis is a shallow clone, so the base commit or merge-base is probably missing. "
+            "Fetch full history: `git fetch --unshallow`, or `fetch-depth: 0` with actions/checkout."
+        ) from exc
     scope = summarize_scope(changed_files)
     tests = summarize_tests(changed_files)
 
